@@ -1,0 +1,46 @@
+pipeline{
+    agent any
+    
+    environment{
+        REPO_URL = "https://github.com/devops-niharika-karkra/Test-code.git"
+        BRANCH = 'main'
+        CONTAINER_NAME = 'apache-app'
+        WEB_ROOT = '/var/www/html/'
+        HOST_URL = 'http://54.160.189.117'
+    }
+    stages{
+        stage('CheckoutCode'){
+            steps{
+                git branch: "${BRANCH}",url: "${REPO_URL}"
+            }
+        }
+    stage('CheckApacheContainer'){
+        steps{
+            sh'''
+                set -eu
+                docker inspect -f '{{.State.Running}}'\
+                "$CONTAINER_NAME" | grep -qx true
+                echo "Apache is running."
+            '''
+        }
+    }
+    
+    stage('deploy'){
+        steps{ 
+        sh '''
+            docker cp "$WORKSPACE/index.html" "$CONTAINER_NAME:$WEB_ROOT/index.html"
+            echo "Website deployment completed"
+        '''
+        }
+    }
+    
+    stage('Restart Apache'){
+        steps{
+            sh '''
+            docker exec "$CONTAINER_NAME" apachectl start
+            echo "Apache restarted successfully." 
+            '''
+        }
+    }
+    }
+}
